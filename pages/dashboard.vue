@@ -17,19 +17,21 @@
           <table class="table w-full">
             <thead>
               <tr>
-                <th>Order ID</th>
+                <th>Order Number</th>
                 <th>Customer</th>
                 <th>Total Amount</th>
                 <th>Date</th>
+                <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="order in recentOrders" :key="order.id">
-                <td>{{ order.id }}</td>
+                <td>{{ order.order_number }}</td>
                 <td>{{ order.customer.firstname }} {{ order.customer.lastname }}</td>
                 <td>{{ formatLakPrice(order.final_amount) }}</td>
                 <td>{{ new Date(order.order_date).toLocaleDateString() }}</td>
+                <td>{{ getStatusDescription(order.status) }}</td>
                 <td>
                   <button 
                     @click="showOrderDetails(order)" 
@@ -87,7 +89,7 @@
   
   <script setup>
   const { formatLakPrice, calculateTotalLakPrice } = useLakPrice()
-
+  const { getStatusDescription } = useOrderStatus();
   const {$supabaseData} = useNuxtApp()
 
   const ordersData = await $supabaseData.fetchOrders()
