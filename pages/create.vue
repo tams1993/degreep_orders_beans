@@ -8,7 +8,7 @@
           <label class="label">Customer</label>
           <select v-model="selectedCustomer" class="select select-bordered">
             <option v-for="customer in customers" :key="customer.id" :value="customer.id">
-              {{ customer.name }}
+              {{ customer.firstname }} {{ customer.lastname }}
             </option>
           </select>
         </div>
@@ -18,7 +18,7 @@
           <label class="label">Roast Beans</label>
           <select v-model="selectedRoastBeans" class="select select-bordered">
             <option v-for="bean in roastBeans" :key="bean.id" :value="bean.id">
-              {{ bean.name }} - ${{ bean.price_per_kg }}/kg
+              {{ bean.name }} - {{ formatLakPrice(bean.price_per_kg) }}/kg
             </option>
           </select>
         </div>
@@ -34,23 +34,32 @@
             step="0.1"
           />
         </div>
+
+        <!-- <client-only>
+          <Vue3Lottie
+            :animationData="coffee"
+          />
+        </client-only> -->
   
         <!-- Order Summary -->
         <div class="card bg-base-200">
           <div class="card-body">
             <h2 class="card-title">Order Summary</h2>
-            <p>Total Price: ${{ totalPrice }}</p>
+            <p>Total Price: {{ formatLakPrice(totalPrice) }}</p>
             <p v-if="appliedPromotion">
               Promotion: {{ appliedPromotion.name }}
               Discount: {{ appliedPromotion.discount_percentage }}%
             </p>
-            <p>Final Price: ${{ finalPrice }}</p>
+            <p>Final Price: {{ formatLakPrice(finalPrice) }}</p>
             <button 
               @click="createOrder" 
               class="btn btn-primary"
-              :disabled="!canCreateOrder"
+              :disabled="!canCreateOrder || loading"
             >
+            <span class="loading loading-spinner loading-lg text-accent" v-if="loading"></span>
+            <span v-if="!loading">
               Create Order
+            </span>
             </button>
           </div>
         </div>
@@ -60,16 +69,18 @@
   
   <script setup>
   import { ref, computed } from 'vue'
-  
+  import coffee from '~/assets/lottie/coffee.json'
   const supabase = useSupabase()
-  
+  const { formatLakPrice, calculateTotalLakPrice } = useLakPrice()
+
   const customers = ref([])
   const roastBeans = ref([])
   const promotions = ref([])
+  const loading = ref(false)
   
   const selectedCustomer = ref(null)
   const selectedRoastBeans = ref(null)
-  const quantity = ref(0)
+  const quantity = ref(1)
   
   // Fetch initial data
   const { data: customerData } = await supabase.from('customers').select('*')
@@ -82,7 +93,7 @@
   promotions.value = promoData
   
   const totalPrice = computed(() => {
-    const bean = roastBeans.value.find(b => b.id === selectedRoastBeans.value)
+    const bean = roastBeans.value?.find(b => b.id === selectedRoastBeans.value)
     return bean ? (bean.price_per_kg * quantity.value).toFixed(2) : 0
   })
   
@@ -107,27 +118,49 @@
   )
   
   const createOrder = async () => {
-    const { data, error } = await supabase
-      .from('orders')
-      .insert({
+    loading.value = true
+  try {
+    // Insert the order into the 'orders_beans' table
+    const { data: ordersData, error: ordersError } = await supabase.from('orders_beans').insert([
+      {
         customer_id: selectedCustomer.value,
         total_amount: totalPrice.value,
-        discount_amount: appliedPromotion.value 
-          ? (totalPrice.value * (appliedPromotion.value.discount_percentage / 100)) 
+        discount_amount: appliedPromotion.value
+          ? (totalPrice.value * (appliedPromotion.value.discount_percentage / 100))
           : 0,
         final_amount: finalPrice.value,
-        promotion_id: appliedPromotion.value?.id
-      })
-      .select()
-  
-    if (data) {
-      await supabase.from('order_items').insert({
-        order_id: data[0].id,
+        promotion_id: appliedPromotion.value?.id,
+      }
+    ]).select()
+
+    if (ordersError) {
+      throw new Error(`Failed to create order: ${ordersError.message}`);
+    }
+
+    const orderId = ordersData[0].id
+
+    // Insert the order item into the 'order_items' table
+    const { data: orderItemsData, error: orderItemsError } = await supabase.from('order_items').insert([
+      {
+        order_id: orderId,
         roast_beans_id: selectedRoastBeans.value,
         quantity: quantity.value,
         item_price: roastBeans.value.find(b => b.id === selectedRoastBeans.value).price_per_kg,
         subtotal: totalPrice.value
-      })
+      }
+    ])
+
+    if (orderItemsError) {
+      throw new Error(`Failed to create order item: ${orderItemsError.message}`);
     }
+
+    // If both operations are successful, show a success message
+    useNuxtApp().$toast.success('Order has been created');
+    loading.value = false
+  } catch (error) {
+    loading.value = false
+    console.error(error);
+    useNuxtApp().$toast.error(error.message || 'An error occurred while creating the order.');
   }
+}
   </script>
