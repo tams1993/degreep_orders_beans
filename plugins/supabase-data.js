@@ -18,8 +18,8 @@ export default defineNuxtPlugin(async (nuxtApp) => {
             customer:customers(*),
             order_items(
               *,
+              roast_coffee_level(*),
               roast_beans(name,
-                roast_coffee_level(level),
                 coffee_bean(
                   coffee_process(process),
                   coffee_region_origin(region_origin),

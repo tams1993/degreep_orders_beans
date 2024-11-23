@@ -58,8 +58,8 @@
                   <th></th>
                   <th>Roast Beans</th>
                   <th>Process</th>
-                  <th>Roast level</th>
                   <th>Quantity</th>
+                  <th>Roast Level</th>
                   <th>Item Price</th>
                   <th>Subtotal</th>
                 </tr>
@@ -69,8 +69,8 @@
                   <td>{{ selectedOrderItems.length }}</td>
                   <td>{{ item.roast_beans.coffee_bean.coffee_region_origin.region_origin }} {{ item.roast_beans.coffee_bean.coffee_variety_relationship.parent.type }} {{ item.roast_beans.coffee_bean.coffee_variety_relationship.child.type }}</td>
                   <td>{{ item.roast_beans.coffee_bean.coffee_process.process }} </td>
-                  <td>{{ item.roast_beans.roast_coffee_level.level }}</td>
                   <td>{{ item.quantity }} kg</td>
+                  <td>{{ item.roast_coffee_level.level }}</td>
                   <td>{{ formatLakPrice(item.item_price) }}/kg</td>
                   <td>{{ formatLakPrice(item.subtotal) }}</td>
                 </tr>

@@ -34,6 +34,15 @@
             step="0.1"
           />
         </div>
+        <!-- Roast level -->
+        <div class="form-control">
+          <label class="label">Roast Level</label>
+          <select v-model="selectedRoastLevel" class="select select-bordered">
+            <option v-for="level in roastLevelData" :key="level.id" :value="level.id">
+              {{ level.level }}
+            </option>
+          </select>
+        </div>
 
           <!-- Shipping Address Selection -->
       <div class="form-control">
@@ -88,11 +97,13 @@
 
   const customers = ref([])
   const roastBeans = ref([])
+  const roastLevel = ref([])
   const promotions = ref([])
   const loading = ref(false)
   
   const selectedCustomer = ref(null)
   const selectedRoastBeans = ref(null)
+  const selectedRoastLevel = ref(null)
   const quantity = ref(1)
   const shippingAddresses = ref([])
   const selectedShippingAddress = ref('')
@@ -103,6 +114,9 @@
   
   const { data: beansData } = await supabase.from('roast_beans').select('*')
   roastBeans.value = beansData
+
+  const { data: roastLevelData } = await supabase.from('roast_coffee_level').select('*')
+  roastLevel.value = roastLevelData
   
   const { data: promoData } = await supabase.from('promotions').select('*')
   promotions.value = promoData
@@ -133,6 +147,8 @@
   const canCreateOrder = computed(() => 
     selectedCustomer.value && 
     selectedRoastBeans.value && 
+    selectedRoastLevel.value && 
+    selectedShippingAddress.value &&
     quantity.value > 0
   )
 
@@ -157,6 +173,7 @@
         final_amount: finalPrice.value,
         promotion_id: appliedPromotion.value?.id,
         shipping_address_id: selectedShippingAddress.value,
+        
 
       }
     ]).select()
@@ -174,7 +191,8 @@
         roast_beans_id: selectedRoastBeans.value,
         quantity: quantity.value,
         item_price: roastBeans.value.find(b => b.id === selectedRoastBeans.value).price_per_kg,
-        subtotal: totalPrice.value
+        subtotal: totalPrice.value,
+        roast_level_id: selectedRoastLevel.value
       }
     ])
 
