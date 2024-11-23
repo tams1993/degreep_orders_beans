@@ -35,14 +35,27 @@
           />
         </div>
 
-        <!-- <client-only>
-          <Vue3Lottie
-            :animationData="coffee"
-          />
-        </client-only> -->
+          <!-- Shipping Address Selection -->
+      <div class="form-control">
+        <label class="label">Shipping Address</label>
+        <select v-model="selectedShippingAddress" class="select select-bordered" :disabled="!selectedCustomer">
+          <option value="">Select shipping address</option>
+          <option v-for="address in shippingAddresses" :key="address.id" :value="address.id">
+            {{ address.receiver_name }} - {{ address.city }}
+          </option>
+        </select>
+        <!-- Show selected address details -->
+        <div v-if="selectedShippingAddress && currentAddress" class="mt-2 text-sm bg-base-200 p-2 rounded-lg">
+          <p><span class="font-medium">Receiver:</span> {{ currentAddress.receiver_name }}</p>
+          <p><span class="font-medium">Phone:</span> {{ currentAddress.phone }}</p>
+          <p><span class="font-medium">Address:</span> {{ currentAddress.branch_details }}</p>
+          <p>{{ currentAddress.city }}, {{ currentAddress.province }}, {{ currentAddress.country }}</p>
+          <p><span class="font-medium">Shipping:</span> {{ currentAddress.shipping_company }}</p>
+        </div>
+      </div>
   
         <!-- Order Summary -->
-        <div class="card bg-base-200">
+        <div class="card bg-base-200 col-span-2">
           <div class="card-body">
             <h2 class="card-title">Order Summary</h2>
             <p>Total Price: {{ formatLakPrice(totalPrice) }}</p>
@@ -81,6 +94,8 @@
   const selectedCustomer = ref(null)
   const selectedRoastBeans = ref(null)
   const quantity = ref(1)
+  const shippingAddresses = ref([])
+  const selectedShippingAddress = ref('')
   
   // Fetch initial data
   const { data: customerData } = await supabase.from('customers').select('*')
@@ -91,6 +106,10 @@
   
   const { data: promoData } = await supabase.from('promotions').select('*')
   promotions.value = promoData
+
+  const currentAddress = computed(() => {
+  return shippingAddresses.value.find(addr => addr.id === selectedShippingAddress.value)
+  })
   
   const totalPrice = computed(() => {
     const bean = roastBeans.value?.find(b => b.id === selectedRoastBeans.value)
@@ -116,6 +135,13 @@
     selectedRoastBeans.value && 
     quantity.value > 0
   )
+
+  // Watch for customer changes
+  watch(selectedCustomer, async (newVal) => {
+    if (newVal) {
+      await loadShippingAddresses()
+    }
+  })
   
   const createOrder = async () => {
     loading.value = true
@@ -130,6 +156,8 @@
           : 0,
         final_amount: finalPrice.value,
         promotion_id: appliedPromotion.value?.id,
+        shipping_address_id: selectedShippingAddress.value,
+
       }
     ]).select()
 
@@ -161,6 +189,30 @@
     loading.value = false
     console.error(error);
     useNuxtApp().$toast.error(error.message || 'An error occurred while creating the order.');
+  }
+}
+
+// Methods
+async function loadShippingAddresses() {
+  if (!selectedCustomer.value) {
+    shippingAddresses.value = []
+    selectedShippingAddress.value = ''
+    return
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('shipping_information')
+      .select('*')
+      .eq('customer_id', selectedCustomer.value)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    shippingAddresses.value = data
+    selectedShippingAddress.value = ''
+  } catch (err) {
+    console.error('Error loading shipping addresses:', err)
+    shippingAddresses.value = []
   }
 }
   </script>
