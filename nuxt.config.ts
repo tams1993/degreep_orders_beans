@@ -9,7 +9,8 @@ export default defineNuxtConfig({
       autoprefixer: {},
     },
   },
-  modules: ['@nuxtjs/tailwindcss', '@nuxt/icon'],
+  modules: ['@nuxtjs/tailwindcss', '@nuxt/icon','@pinia/nuxt',
+  ],
   runtimeConfig: {
     SUPABASE_URL: process.env.SUPABASE_URL, // can be overridden by NUXT_API_SECRET environment variable
     SUPABASE_KEY: process.env.SUPABASE_KEY, // can be overridden by NUXT_API_SECRET environment variable

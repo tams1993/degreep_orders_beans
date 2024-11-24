@@ -111,7 +111,8 @@
   const totalOrders = computed(() => salesData?.length || 0)
   const showOrderDetails = (order) => {
   selectedOrder.value = order
-  selectedOrderItems.value = order.order_items
+  selectedOrderItems.value = selectedOrder.value.order_items
+
   
   // Open modal
   const modal = document.getElementById('orderDetailsModal')
