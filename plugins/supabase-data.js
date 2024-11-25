@@ -16,6 +16,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
           .select(`
             *,
             customer:customers(*),
+            shipping_information(*),
             order_items(
               *,
               roast_coffee_level(*),
