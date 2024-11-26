@@ -49,10 +49,10 @@
             </thead>
             <tbody>
               <tr v-for="order in recentOrders" :key="order.id" :class="{
-                  'bg-success/10': order?.status === 'completed',
-                  'bg-warning/10': order?.status === 'processing',
-                  'bg-error/10': order?.status === 'cancelled'
-                }">
+                'bg-success/10': order?.status === 'completed',
+                'bg-warning/10': order?.status === 'processing',
+                'bg-error/10': order?.status === 'cancelled'
+              }">
                 <td>{{ order?.order_number }}</td>
                 <td>
                   <div class="flex items-center space-x-3">
@@ -73,17 +73,12 @@
                 <td>{{ formatLakPrice(order?.final_amount) }}</td>
                 <td>{{ new Date(order?.order_date).toLocaleDateString() }}</td>
                 <td>
-                  <select 
-                    class="badge badge-lg select select-sm select-bordered w-full max-w-xs" 
-                    :class="{
-                      'badge-success': order?.status === 3,
-                      'badge-warning': order?.status === 1,
-                      'badge-info': order?.status === 2,
-                      'badge-error': order?.status === 4
-                    }"
-                    v-model="order.status"
-                    @change="updateOrderStatus(order)"
-                  >
+                  <select class="badge badge-lg select select-sm select-bordered w-full max-w-xs" :class="{
+                    'badge-success': order?.status === 3,
+                    'badge-warning': order?.status === 1,
+                    'badge-info': order?.status === 2,
+                    'badge-error': order?.status === 4
+                  }" v-model="order.status" @change="updateOrderStatus(order)">
                     <option :value=1>Placed</option>
                     <option :value=2>Paid</option>
                     <option :value=3>Delivered</option>
@@ -115,11 +110,11 @@
             Order Details
           </h3>
           <div class="badge badge-lg" :class="{
-          'badge-success': selectedOrder?.status === 3,
-          'badge-warning': selectedOrder?.status === 1,
-          'badge-info': selectedOrder?.status === 2,
-          'badge-error': selectedOrder?.status === 4
-        }">
+            'badge-success': selectedOrder?.status === 3,
+            'badge-warning': selectedOrder?.status === 1,
+            'badge-info': selectedOrder?.status === 2,
+            'badge-error': selectedOrder?.status === 4
+          }">
             {{ getStatusDescription(selectedOrder?.status).toUpperCase() }}
           </div>
         </div>
@@ -178,7 +173,7 @@
             </h4>
             <div class="space-y-2" v-if="selectedOrder">
               <div class="flex justify-between">
-                <span class="text-base-content/70">Receiver_name:</span>
+                <span class="text-base-content/70">Receiver name:</span>
                 <span class="font-medium">
                   {{ selectedOrder?.shipping_information.receiver_name }}
                 </span>
@@ -188,7 +183,7 @@
                 <span class="font-medium text-info">{{ selectedOrder?.shipping_information.phone }}</span>
               </div>
               <div class="flex justify-between">
-                <span class="text-base-content/70">Shipping_company:</span>
+                <span class="text-base-content/70">Shipping company:</span>
                 <span class="font-medium">{{ selectedOrder?.shipping_information.shipping_company || 'N/A' }}</span>
               </div>
               <div class="flex justify-between">
@@ -204,7 +199,7 @@
                 <span class="font-medium">{{ selectedOrder?.shipping_information.city || 'N/A' }}</span>
               </div>
               <div class="flex justify-between">
-                <span class="text-base-content/70">Branch_details:</span>
+                <span class="text-base-content/70">Branch details:</span>
                 <span class="font-medium">{{ selectedOrder?.shipping_information.branch_details || 'N/A' }}</span>
               </div>
             </div>
@@ -267,56 +262,59 @@
   </div>
 </template>
 
-  
-  <script setup>
-  const { formatLakPrice, calculateTotalLakPrice } = useLakPrice()
-  const { getStatusDescription } = useOrderStatus();
-  const {$supabaseData} = useNuxtApp()
 
-  const ordersData = await $supabaseData.fetchOrders()
+<script setup>
+// definePageMeta({
+//   middleware: ['auth']
+// })
+const { formatLakPrice, calculateTotalLakPrice } = useLakPrice()
+const { getStatusDescription } = useOrderStatus();
+const { $supabaseData } = useNuxtApp()
 
-  const supabase = useSupabase()
+const ordersData = await $supabaseData.fetchOrders()
 
-  const recentOrders = ref(ordersData || [])
-  const selectedOrder = ref()
-  const selectedOrderStatus = ref()
-  const selectedOrderItems = ref([])
-  
-  const { data: salesData } = await supabase
-    .from('orders_beans')
-    .select('final_amount')
-  
-  const totalSales = computed(() => 
-    salesData?.reduce((sum, order) => sum + order?.final_amount, 0).toFixed(2) || 0
-  )
-  
-  const totalOrders = computed(() => salesData?.length || 0)
-  const showOrderDetails = (order) => {
-    console.log(order)
+const {$supabaseClient} = useNuxtApp()
+const supabase = $supabaseClient
+
+const recentOrders = ref(ordersData || [])
+const selectedOrder = ref()
+const selectedOrderStatus = ref()
+const selectedOrderItems = ref([])
+
+const { data: salesData } = await supabase
+  .from('orders_beans')
+  .select('final_amount')
+
+const totalSales = computed(() =>
+  salesData?.reduce((sum, order) => sum + order?.final_amount, 0).toFixed(2) || 0
+)
+
+const totalOrders = computed(() => salesData?.length || 0)
+const showOrderDetails = (order) => {
   selectedOrder.value = order
   selectedOrderItems.value = selectedOrder.value.order_items
 
-  
+
   // Open modal
   const modal = document.getElementById('orderDetailsModal')
   if (modal) modal.showModal()
+}
+
+const updateOrderStatus = async (order) => {
+  try {
+    const { data, error } = await supabase
+      .from('orders_beans')
+      .update({ status: order.status })
+      .eq('id', order.id)
+
+    if (error) throw error
+
+    // Optionally update local state or show notification
+    // this.orders = this.orders.map(o => 
+    //   o.id === order.id ? { ...o, status: order.status } : o
+    // )
+  } catch (error) {
+    console.error('Error updating status:', error)
   }
-
-  const updateOrderStatus = async (order) => {
-    try {
-      const { data, error } = await supabase
-        .from('orders_beans')
-        .update({ status: order.status })
-        .eq('id', order.id)
-
-      if (error) throw error
-
-      // Optionally update local state or show notification
-      // this.orders = this.orders.map(o => 
-      //   o.id === order.id ? { ...o, status: order.status } : o
-      // )
-    } catch (error) {
-      console.error('Error updating status:', error)
-    }
-  }
-  </script>
+}
+</script>
