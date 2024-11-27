@@ -36,15 +36,25 @@
                     Customer Details
                 </h3>
                 <div v-if="selectedCustomer" class="space-y-4">
-                    <p><strong>Name:</strong> {{ selectedCustomer.firstname }} {{ selectedCustomer.lastname }}</p>
-                    <p><strong>Email:</strong> {{ selectedCustomer.email }}</p>
-                    <p><strong>Phone:</strong> {{ selectedCustomer.phone }}</p>
-                    <p><strong>Country:</strong> {{ selectedCustomer.country }}</p>
-                    <p><strong>Street Address:</strong> {{ selectedCustomer.street_address }}</p>
-                    <p><strong>City:</strong> {{ selectedCustomer.city }}</p>
-                    <p><strong>Province:</strong> {{ selectedCustomer.province }}</p>
-                    <p><strong>Zipcode:</strong> {{ selectedCustomer.zipcode }}</p>
-                    <p><strong>Company:</strong> {{ selectedCustomer.company }}</p>
+                    <div class="grid grid-cols-2 gap-4 p-4 my-4">
+                        <div class="space-y-4">
+                            <p><strong>Name:</strong> {{ selectedCustomer.firstname }} {{ selectedCustomer.lastname }}
+                            </p>
+                            <p><strong>Email:</strong> {{ selectedCustomer.email }}</p>
+                            <p><strong>Phone:</strong> {{ selectedCustomer.phone }}</p>
+                            <p><strong>Country:</strong> {{ selectedCustomer.country }}</p>
+                            <p><strong>Street Address:</strong> {{ selectedCustomer.street_address }}</p>
+                        </div>
+                        <div class="space-y-4">
+                            <p><strong>City:</strong> {{ selectedCustomer.city }}</p>
+                            <p><strong>Province:</strong> {{ selectedCustomer.province }}</p>
+                            <p><strong>Zipcode:</strong> {{ selectedCustomer.zipcode }}</p>
+                            <p><strong>Company:</strong> {{ selectedCustomer.company }}</p>
+                        </div>
+
+                    </div>
+
+
                     <!-- Shipping Information Table -->
                     <div class="flex mt-6">
                         <h4 class=" text-xl font-bold text-center flex-1">Shipping Information
@@ -145,6 +155,20 @@
                                     <td>{{ address.province }}</td>
                                     <td>{{ address.city }}</td>
                                     <td>{{ address.branch_details }}</td>
+                                    <td class="flex items-center">
+                                        <button @click="deleteShippingID = address.id"
+                                            v-if="deleteShippingID !== address.id">
+                                            <Icon name="material-symbols:delete-outline" class="mx-2" size="2em" />
+                                        </button>
+                                        <div v-if="deleteShippingID === address.id" class="flex items-center gap-2">
+                                            <a class="link link-hover" @click="deleteShippingAddress(address.id)">
+                                                Sure?
+                                            </a>
+                                            <a class="link link-hover" @click="deleteShippingID = ''">
+                                                Cancel
+                                            </a>
+                                        </div>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -173,6 +197,7 @@ const supabase = $supabaseClient
 const selectedCustomer = ref(null)
 const showAddShippingForm = ref(false)
 const loading = ref(false)
+const deleteShippingID = ref('')
 const newShippingAddress = ref({
     receiver_name: '',
     phone: '',
@@ -222,6 +247,7 @@ const createShippingInfo = async () => {
             useNuxtApp().$toast.success('New shipping info has been created');
             customersData.value = await $supabaseData.fetchCustomers()
             showAddShippingForm.value = false
+            selectedCustomer.value.shipping_information.push(data[0])
             resetShippingForm()
         }
 
@@ -233,6 +259,28 @@ const createShippingInfo = async () => {
 
 
 }
+
+// Function to delete a shipping address
+const deleteShippingAddress = async (addressId) => {
+    if (!selectedCustomer.value || !addressId) return;
+
+    const { data, error } = await supabase
+        .from('shipping_information')
+        .delete()
+        .eq('id', addressId);
+
+    if (error) {
+        useNuxtApp().$toast.error(error.message || 'Error deleting shipping address.');
+        return;
+    }
+
+    useNuxtApp().$toast.success('Shipping info has been deleted');
+
+
+    selectedCustomer.value.shipping_information = selectedCustomer.value.shipping_information.filter(address => address.id !== addressId)
+    customersData.value = await $supabaseData.fetchCustomers()
+
+};
 
 const resetShippingForm = () => {
     newShippingAddress.value = {
