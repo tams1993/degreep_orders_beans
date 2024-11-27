@@ -26,12 +26,6 @@
                     {{ loading ? 'Signing in...' : 'Sign in' }}
                 </button>
             </form>
-
-            <!-- <div class="text-center">
-                <NuxtLink to="/signup" class="text-indigo-600 hover:text-indigo-500">
-                    Don't have an account? Sign up
-                </NuxtLink>
-            </div> -->
         </div>
     </div>
 </template>

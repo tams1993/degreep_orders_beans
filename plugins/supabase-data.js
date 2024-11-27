@@ -18,6 +18,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
             *,
             customer:customers(*),
             shipping_information(*),
+            order_status_history!order_status_history_order_id_fkey(*),
             order_items(
               *,
               roast_coffee_level(*),
@@ -95,7 +96,44 @@ export default defineNuxtPlugin(async (nuxtApp) => {
         return null
       }
 
+      
+
       return data
+    },
+
+    async fetchRemainingOrders(options = {}) {
+      const { limit = 10, ascending = false } = options;
+      const statuses = [1, 3];
+
+      const promises = statuses.map(async status => {
+        try {
+          const { count, error } = await supabase
+            .from('orders_beans')
+            .select('*', { count: 'exact' })
+            .eq('status', status);
+
+          if (error) {
+            console.error(`Error fetching count for status ${status}:`, error);
+            return { [status]: 0 };
+          } else {
+            return { [status]: count || 0 };
+          }
+        } catch (err) {
+          console.error(`Unexpected error while fetching orders for status ${status}:`, err);
+          return { [status]: 0 };
+        }
+      });
+
+      const results = await Promise.all(promises);
+
+      // Combine all results into a single object with individual counts
+      const statusCounts = results.reduce((acc, curr) => ({ ...acc, ...curr }), {});
+
+      // Calculate the total count by summing up all individual counts
+      const totalCounts = Object.values(statusCounts).reduce((acc, count) => acc + count, 0);
+
+      // Return an object containing both statusCounts and totalCounts
+      return { statusCounts, totalCounts };
     }
   }
 

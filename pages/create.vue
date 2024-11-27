@@ -170,7 +170,7 @@
 import { ref, computed } from 'vue'
 
 
-const {$supabaseClient} = useNuxtApp()
+const { $supabaseClient } = useNuxtApp()
 const supabase = $supabaseClient
 const { formatLakPrice, calculateTotalLakPrice } = useLakPrice()
 
@@ -288,6 +288,20 @@ const createOrder = async () => {
 
     if (orderItemsError) {
       throw new Error(`Failed to create order item: ${orderItemsError.message}`);
+    }
+
+    // Insert order history
+
+    const orderHistoryObj = cart.value.map(item => ({
+      order_id: orderId
+    }));
+
+    const { data: orderHistory, error: orderHistoryError } = await supabase
+      .from('order_status_history')
+      .insert(orderHistoryObj);
+
+      if (orderHistoryError) {
+      throw new Error(`Failed to create order history: ${orderHistoryError.message}`);
     }
 
     // If both operations are successful, show a success message
