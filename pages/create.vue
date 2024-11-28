@@ -84,16 +84,32 @@
           <!-- Shipping Address Section -->
           <div class="mb-4">
             <div class="form-control">
-              <label class="label">
-                <span class="label-text font-semibold">Shipping Address</span>
-              </label>
-              <select v-model="selectedShippingAddress" class="select select-bordered w-full"
-                :disabled="cart.length === 0">
-                <option value="">Select shipping address</option>
-                <option v-for="address in shippingAddresses" :key="address.id" :value="address.id">
-                  {{ address.receiver_name }} - {{ address.city }}
-                </option>
-              </select>
+              <div class="form-control w-full max-w-xs">
+                <label class="label">
+                  <span class="label-text">Delivery Method</span>
+                </label>
+
+                <label class="cursor-pointer label" v-for="delivery in deliveryMethods" :key="delivery.id">
+                  <span class="label-text">{{ delivery.delivery_type }}</span>
+                  <input type="radio" name="delivery_method" :value="delivery.id" class="radio checked:bg-primary"
+                    v-model="selectedDelivery" :disabled="cart.length === 0" />
+                </label>
+
+
+              </div>
+              <div v-if="selectedDelivery === 2">
+                <label class="label">
+                  <span class="label-text font-semibold">Shipping Address</span>
+                </label>
+                <select v-model="selectedShippingAddress" class="select select-bordered w-full"
+                  :disabled="cart.length === 0" v-if="selectedDelivery == 2">
+                  <option value="">Select shipping address</option>
+                  <option v-for="address in shippingAddresses" :key="address.id" :value="address.id">
+                    {{ address.receiver_name }} - {{ address.city }}
+                  </option>
+                </select>
+              </div>
+
 
               <!-- Expanded Address Details -->
               <div v-if="selectedShippingAddress && currentAddress" class="mt-2 bg-base-100 p-3 rounded-lg shadow-sm">
@@ -178,6 +194,7 @@ const customers = ref([])
 const roastBeans = ref([])
 const roastLevel = ref([])
 const promotions = ref([])
+const deliveryMethods = ref([])
 const cart = ref([])
 
 const loading = ref(false)
@@ -188,6 +205,7 @@ const selectedRoastLevel = ref(null)
 const quantity = ref(1)
 const shippingAddresses = ref([])
 const selectedShippingAddress = ref('')
+const selectedDelivery = ref(1)
 
 // Fetch initial data
 const { data: customerData } = await supabase.from('customers').select('*')
@@ -201,6 +219,15 @@ roastLevel.value = roastLevelData
 
 const { data: promoData } = await supabase.from('promotions').select('*')
 promotions.value = promoData
+
+
+const { data: delivery_methods, error } = await supabase
+  .from('delivery_methods')
+  .select('*')
+deliveryMethods.value = delivery_methods
+
+
+
 
 const currentAddress = computed(() => {
   return shippingAddresses.value.find(addr => addr.id === selectedShippingAddress.value)
@@ -225,8 +252,13 @@ const finalPrice = computed(() => {
     : total
 })
 
-const canCreateOrder = computed(() =>
-  cart.value.length > 0 && selectedShippingAddress.value
+const canCreateOrder = computed(() => {
+  if (selectedDelivery.value === 2) {
+    return cart.value.length > 0 && selectedShippingAddress.value
+
+  } else
+    return cart.value.length > 0
+}
 )
 
 const canAddToCart = computed(() =>
@@ -256,7 +288,7 @@ const createOrder = async () => {
           : 0,
         final_amount: finalPrice.value,
         promotion_id: appliedPromotion.value?.id,
-        shipping_address_id: selectedShippingAddress.value,
+        shipping_address_id: selectedShippingAddress.value ? selectedShippingAddress.value : null,
 
 
       }
@@ -300,7 +332,7 @@ const createOrder = async () => {
       .from('order_status_history')
       .insert(orderHistoryObj);
 
-      if (orderHistoryError) {
+    if (orderHistoryError) {
       throw new Error(`Failed to create order history: ${orderHistoryError.message}`);
     }
 
@@ -341,7 +373,13 @@ async function loadShippingAddresses() {
 }
 
 const addToCart = () => {
+
+
   if (canAddToCart.value) {
+    if (cart.value[0]?.customer_id !== selectedCustomer.value) {
+      cart.value = []
+    }
+
     const newItem = {
       customer_id: selectedCustomer.value,
       roast_bean: selectedRoastBeans.value,

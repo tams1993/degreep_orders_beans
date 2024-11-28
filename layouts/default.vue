@@ -6,7 +6,7 @@
         <div class="navbar bg-base-100">
 
           <!-- Navigation Links -->
-          <div class="navbar-center flex-1">
+          <div class=" flex-1">
             <ul class="menu menu-horizontal px-1">
               <li>
                 <NuxtLink to="/dashboard" class="flex items-center gap-2">
@@ -26,11 +26,23 @@
                   Customer
                 </NuxtLink>
               </li>
+              <li>
+                <NuxtLink to="/product" class="flex items-center gap-2">
+                  <Icon name="icon-park-outline:ad-product" class="mx-2" size="2em" />
+                  Product
+                </NuxtLink>
+              </li>
+              <li>
+                <NuxtLink to="/promotion" class="flex items-center gap-2">
+                  <Icon name="lsicon:badge-promotion-filled" class="mx-2" size="2em" />
+                  Promotion
+                </NuxtLink>
+              </li>
             </ul>
           </div>
 
           <!-- User Dropdown -->
-          <div class="navbar-end flex-none">
+          <div class=" flex-none">
             <div class="dropdown dropdown-end">
               <label tabindex="0" class="btn btn-ghost">
                 <span>{{ user.email }}</span>
