@@ -10,31 +10,20 @@
         </div>
 
         <div class="stat">
-          <div class="stat-title">Total Orders</div>
-          <div class="stat-value text-secondary">{{ totalOrders }}</div>
-          <div class="stat-desc">+{{ (recentOrders?.length || 0) }} new</div>
+          <div class="stat-title">Canceled Orders</div>
+          <div class="stat-value text-error text-7xl">{{ canceldOrder(recentOrders).length }}</div>
         </div>
 
-        <div class="stat">
-          <div class="stat-figure text-accent">
+        <div class="stat grid grid-cols-2">
+          <div class="stat-title">Unfinished Orders</div>
+          <div class="stat-value text-warning text-7xl">{{ unfinishedOrders(recentOrders).length }}</div>
 
-          </div>
-          <div class="stat-title">Remaining Orders</div>
-          <div class="stat-value text-error">{{ remainingOrdersCount }}</div>
-          <div class="grid grid-cols-2">
-            <div>
-              <div class="stat-title">Placed Orders</div>
-              <div class="stat-value text-secondary">{{ placedOrder.length }}</div>
-            </div>
-
-            <div>
-              <div class="stat-title">Delivered Orders</div>
-
-              <div class="stat-value text-secondary">{{ deliveredOrder.length }}</div>
-            </div>
-
-
-          </div>
+          <select class="select select-primary w-full max-w-xs" @change="handleSelectChange(recentOrders, $event)">
+            <option disabled selected>Sorting</option>
+            <option value="all">Show all orders</option>
+            <option value="unfinished">Show unfinished orders</option>
+            <option value="canceled">Show canceled orders</option>
+          </select>
 
         </div>
       </div>
@@ -309,6 +298,19 @@ const deliveredOrder = ordersData.filter(order => {
   return deliveredOrder && !excludeData;
 });
 
+const paidOrder = ordersData.filter(order => {
+  // Check if the order has a status of 1 or 3
+  const paidOrder = order.order_status_history.some(status => status.status === 2);
+
+  // Exclude orders with status 4 if they also have status 1 or 3
+  const excludeData = order.order_status_history.some(status => status.status === 4);
+
+  // Return orders that have status 1 or 3 but do not have status 4
+  return paidOrder && !excludeData;
+});
+
+
+
 
 remainingOrdersCount.value = placedOrder.length + deliveredOrder.length
 
@@ -372,6 +374,38 @@ const containerClass = (order) => {
   return 'bg-accent';
 };
 
+const unfinishedOrders = (orders) => {
+  return orders.filter(order => {
+    const statuses = order.order_status_history.map(statusHistory => statusHistory.status);
+    const excludeData = order.order_status_history.some(status => status.status === 4);
+
+    // Check if none of the statuses are 1, 2, or 3
+    return !statuses.some(status => [1, 2, 3].includes(status)) && !excludeData;
+  });
+};
+
+const canceldOrder = (orders) => {
+
+  return orders.filter(order => {
+    const canceldOrder = order.order_status_history.some(status => status.status === 4);
+    return canceldOrder;
+  });
+
+}
+
+const showUnfinishedOrders = (orders) => {
+  recentOrders.value = unfinishedOrders(orders)
+}
+
+const showAllOrders = async () => {
+  recentOrders.value = await $supabaseData.fetchOrders()
+}
+
+const showCanceledOrders = async (orders) => {
+  recentOrders.value = canceldOrder(orders)
+}
+
+
 const updateOrderStatus = async (orderId, status) => {
   try {
     const { data, error } = await supabase
@@ -416,4 +450,17 @@ const handleCheckboxChange = (order, statusIndex, event) => {
     updateOrderStatus(order.id, statusIndex);
   }
 }
+
+const handleSelectChange = (orders, event) => {
+  const value = event.target.value; // Get the selected option value
+
+  if (value === "unfinished") {
+    showUnfinishedOrders(orders); // Call the function for unfinished orders
+  } else if (value === "all") {
+    showAllOrders(orders); // Call the function for all orders
+  } else if (value === "canceled") {
+    showCanceledOrders(orders); // Call the function for canceled orders
+  }
+};
+
 </script>
