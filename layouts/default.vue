@@ -27,9 +27,9 @@
                 </NuxtLink>
               </li>
               <li>
-                <NuxtLink to="/product" class="flex items-center gap-2">
+                <NuxtLink to="/roast_beans" class="flex items-center gap-2">
                   <Icon name="icon-park-outline:ad-product" class="mx-2" size="2em" />
-                  Product
+                  Roast beans
                 </NuxtLink>
               </li>
               <li>
