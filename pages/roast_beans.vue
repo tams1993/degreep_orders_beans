@@ -44,7 +44,7 @@
                                 </div>
                                 <div class="card-actions justify-end mt-4">
                                     <button @click="editBean(bean)" class="btn btn-sm btn-info">Edit</button>
-                                    <button @click="deleteBean(bean.id)" class="btn btn-sm btn-error">Delete</button>
+                                    <button @click="deleteBean(bean)" class="btn btn-sm btn-error">Delete</button>
                                 </div>
                             </div>
                         </div>
@@ -121,6 +121,26 @@
                                 <button @click="saveBean" class="btn btn-primary">{{ isEditing ? 'Update' : 'Add'
                                     }}</button>
                                 <button type="button" class="btn" @click="closeModal">Cancel</button>
+                            </div>
+                        </form>
+                    </dialog>
+                    <!-- Deleting confirmation Modal -->
+                    <dialog id="deletingModal" class="modal" v-if="currentBean">
+                        <form method="dialog" class="modal-box">
+                            <h3 class="font-bold text-lg mb-4">Are you sure?</h3>
+                            <span></span>
+
+                            <span>Do you want to delete {{ currentBean.coffee_bean?.coffee_region_origin.region_origin
+                                }} {{
+                                    currentBean.coffee_bean?.coffee_variety_relationship.parent.type }} {{
+                                    currentBean.coffee_bean?.coffee_variety_relationship.child.type }} {{
+                                    currentBean.coffee_bean?.coffee_process.process }}
+                                {{ currentBean.roast_beans_packages?.packages_size.quantity }} {{
+                                    currentBean.roast_beans_packages?.packages_size.units.unit_name }}?</span>
+
+                            <div class="modal-action">
+                                <button @click="deleteBeanConfirm" class="btn btn-primary">Delete</button>
+                                <button type="button" class="btn" @click="closeDeleteModal">Cancel</button>
                             </div>
                         </form>
                     </dialog>
@@ -301,6 +321,7 @@ const fetchBeansList = async () => {
 fetchBeansList()
 
 const isEditing = ref(false);
+const isDeleting = ref(false);
 
 const editBean = (bean) => {
     isEditing.value = true;
@@ -363,17 +384,62 @@ const saveBean = async () => {
 
 };
 
-const deleteBean = (id) => {
-    roastBeansData.value = roastBeansData.value.filter((bean) => bean.id !== id);
+const deleteBean = (bean) => {
+    isDeleting.value = true;
+    currentBean.value = { ...bean };
+    document.getElementById('deletingModal').showModal();
 };
+
+const deleteBeanConfirm = async () => {
+    loading.value = true
+    try {
+
+        const { error: deleteRoastBeans } = await $supabaseClient
+            .from('roast_beans')
+            .delete()
+            .eq('id', currentBean.value.id)
+
+        if (deleteRoastBeans) {
+            console.log(deleteRoastBeans)
+
+            throw new Error(`Failed to delete roast bean: ${deleteRoastBeans}`);
+        }
+
+
+
+        const { error: deleteRoastBeanPackage } = await $supabaseClient
+            .from('roast_beans_packages')
+            .delete()
+            .eq('id', currentBean.value.roast_bean_package_id)
+
+        if (deleteRoastBeanPackage) {
+            console.log(deleteRoastBeanPackage)
+
+            throw new Error(`Failed to delete roast bean package: ${deleteRoastBeanPackage}`);
+        }
+
+
+        // If both operations are successful, show a success message
+        useNuxtApp().$toast.success('roast bean has been created');
+        fetchBeansList()
+        loading.value = false
+    } catch (error) {
+        loading.value = false
+        useNuxtApp().$toast.error(error.message || 'An error occurred while deleting roast bean.');
+    }
+}
 
 
 const closeModal = () => {
     document.getElementById('beanModal').close();
 };
 
+const closeDeleteModal = () => {
+    document.getElementById('deletingModal').close();
+
+}
+
 const addRoastBean = async () => {
-    console.log(newBean.value)
     loading.value = true
     try {
 
