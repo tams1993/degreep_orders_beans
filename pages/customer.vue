@@ -1,5 +1,6 @@
 <template>
     <div class="container p-6 mx-auto">
+
         <div class="drawer drawer-end">
             <input id="customer-drawer" type="checkbox" class="drawer-toggle" />
             <div class="drawer-content">
@@ -314,6 +315,7 @@
             </div>
         </div>
 
+        <Loading :loading="dataLoading" />
 
 
     </div>
@@ -323,6 +325,7 @@
 const { $supabaseData, $supabaseClient } = useNuxtApp()
 const customersData = ref(await $supabaseData.fetchCustomers())
 const supabase = $supabaseClient
+const dataLoading = ref(true)
 
 const selectedCustomer = ref(null)
 const showAddShippingForm = ref(false)
@@ -349,6 +352,12 @@ const customerObj = ref({
     phone: '',
     email: '',
     company: '',
+})
+
+watchEffect(() => {
+    if(customersData) {
+        dataLoading.value = false
+    }
 })
 
 

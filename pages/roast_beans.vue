@@ -51,7 +51,7 @@
                     </div>
 
                     <!-- Add/Edit Bean Modal -->
-                    <dialog id="beanModal" class="modal">
+                    <dialog id="beanModal" class="modal" v-if="currentBean">
                         <form method="dialog" class="modal-box">
                             <h3 class="font-bold text-lg mb-4">{{ isEditing ? 'Edit Bean' : 'Add New Bean' }}</h3>
 
@@ -71,11 +71,42 @@
                                     placeholder="Bean Description" class="textarea textarea-bordered"></textarea>
                             </div>
 
+                            <div class="form-control">
+                                <label class="label" for="coffee_bean">
+                                    <span class="label-text">Coffee bean</span>
+                                </label>
+                                <span>{{ currentBean.coffee_bean?.coffee_region_origin.region_origin }} {{
+                                    currentBean.coffee_bean?.coffee_variety_relationship.parent.type }} {{
+                                        currentBean.coffee_bean?.coffee_variety_relationship.child.type }} {{
+                                        currentBean.coffee_bean?.coffee_process.process }}</span>
+
+                                <input type="text" class="textarea textarea-bordered" disabled
+                                    :value="`${currentBean.coffee_bean?.coffee_region_origin.region_origin} ${currentBean.coffee_bean?.coffee_variety_relationship.parent.type} ${currentBean.coffee_bean?.coffee_variety_relationship.child.type} ${currentBean.coffee_bean?.coffee_process.process}`">
+                            </div>
+
+
                             <div class="form-control mb-4">
                                 <label class="label" for="price">
-                                    <span class="label-text">Price per kg (LAK) Need to FIX!</span>
+                                    <span class="label-text">Bag size</span>
                                 </label>
-                                <input v-model="currentBean.price_per_kg" id="price" type="number"
+                                <div class="flex" v-if="currentBean.roast_beans_packages">
+                                    <input v-model="currentBean.roast_beans_packages.packages_size.quantity"
+                                        id="bag_size" type="number" placeholder="Bag size" disabled
+                                        class="input input-bordered flex-1">
+                                    <label class="label" for="price">
+                                        <span class="label-text">{{
+                                            currentBean.roast_beans_packages.packages_size.units.unit_name }} ({{
+                                                currentBean.roast_beans_packages.packages_size.units.unit_symbol }})</span>
+                                    </label>
+                                </div>
+
+                            </div>
+
+                            <div class="form-control mb-4" v-if="currentBean.roast_beans_packages">
+                                <label class="label" for="price">
+                                    <span class="label-text">Price</span>
+                                </label>
+                                <input v-model="currentBean.roast_beans_packages.price" id="price" type="number"
                                     placeholder="Price per kg" class="input input-bordered">
                             </div>
 
@@ -118,6 +149,8 @@
                                 <textarea v-model="newBean.description" id="description" placeholder="Enter description"
                                     class="textarea textarea-bordered"></textarea>
                             </div>
+
+
 
                             <div class="label">
                                 <span class="label-text">Choose a quantity</span>
@@ -168,16 +201,19 @@
                 </div>
             </div>
         </div>
+        <Loading :loading="dataLoading" />
 
     </div>
 
 </template>
 
 <script setup>
+import { data } from 'autoprefixer';
+
 
 const { $supabaseClient } = useNuxtApp()
 const { formatLakPrice, calculateTotalLakPrice } = useLakPrice()
-
+const dataLoading = ref(true)
 const roastBeansData = ref()
 const currentBean = ref({
     id: null,
@@ -204,6 +240,12 @@ const newBean = ref({
 })
 
 const loading = ref(false)
+
+watchEffect(() => {
+    if (roastBeansData) {
+        dataLoading.value = false
+    }
+})
 
 
 const { data: packages_size } = await $supabaseClient.from('packages_size').select(`
@@ -232,15 +274,24 @@ const fetchBeansList = async () => {
     const { data: roast_beans } = await $supabaseClient.from('roast_beans').select(`
             *,
             roast_beans_packages(
-            price, packages_size(
-                id, 
-                quantity, 
-                units(
-                    unit_name, 
-                    unit_symbol
+                price, packages_size(
+                    id, 
+                    quantity, 
+                    units(
+                        unit_name, 
+                        unit_symbol
+                        )
                     )
-                )
-            )
+                ),
+            coffee_bean( coffee_region_origin(region_origin,
+                coffee_country_origin(country_origin)
+            ),
+            coffee_variety_relationship(
+                    parent:coffee_variety_parent_id(type),
+                    child:coffee_variety_child_id(type)
+                  ),
+            coffee_process(process))
+
           `)
 
     roastBeansData.value = roast_beans
@@ -257,29 +308,59 @@ const editBean = (bean) => {
     document.getElementById('beanModal').showModal();
 };
 
-const addBean = () => {
-    isEditing.value = false;
-    currentBean.value = {
-        id: null,
-        name: '',
-        description: '',
-        price_per_kg: null,
-        available: false,
-    };
-    document.getElementById('beanModal').showModal();
-};
 
-const saveBean = () => {
-    if (isEditing.value) {
-        const index = roastBeansData.value.findIndex((b) => b.id === currentBean.value.id);
-        roastBeansData.value[index] = { ...currentBean.value };
-    } else {
-        roastBeansData.value.push({
-            ...currentBean.value,
-            id: Date.now(),
-        });
+const saveBean = async () => {
+    const updateRoastBeanObj = {
+        name: currentBean.value.name,
+        description: currentBean.value.description,
+        available: currentBean.value.available,
+        id: currentBean.value.id
     }
-    closeModal();
+
+    const updateRoastBeanPackageObj = {
+        id: currentBean.value.roast_bean_package_id,
+        price: currentBean.value.roast_beans_packages.price,
+    }
+
+
+    try {
+
+        const { data, error: updateRoastBeanError } = await $supabaseClient
+            .from('roast_beans')
+            .update(updateRoastBeanObj)
+            .eq('id', updateRoastBeanObj.id)
+            .select()
+
+        if (updateRoastBeanError) {
+
+            throw new Error(`Failed to update roast bean: ${updateRoastBeanError}`);
+        }
+
+        const { data: roastBeansPackage, error: updateRoastBeanPackageError } = await $supabaseClient
+            .from('roast_beans_packages')
+            .update(updateRoastBeanPackageObj)
+            .eq('id', updateRoastBeanPackageObj.id)
+            .select()
+
+        if (updateRoastBeanPackageError) {
+
+            throw new Error(`Failed to update roast bean package: ${updateRoastBeanPackageError}`);
+        }
+        if (data && roastBeansPackage) {
+            closeModal();
+            useNuxtApp().$toast.success('roast bean has been updated');
+            fetchBeansList()
+        }
+
+
+    } catch (error) {
+        loading.value = false
+        useNuxtApp().$toast.error(error.message || 'An error occurred while updating roast bean.');
+    }
+
+
+
+
 };
 
 const deleteBean = (id) => {
