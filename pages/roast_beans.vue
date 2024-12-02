@@ -116,12 +116,14 @@
                                     <span class="label-text">Description</span>
                                 </label>
                                 <textarea v-model="newBean.description" id="description" placeholder="Enter description"
-                                    class="textarea textarea-bordered" required></textarea>
+                                    class="textarea textarea-bordered"></textarea>
                             </div>
 
-                            <select id="quantitySelect" class="select select-bordered w-full max-w-xs"
+                            <div class="label">
+                                <span class="label-text">Choose a quantity</span>
+                            </div>
+                            <select id="quantitySelect" class="select select-bordered w-full max-w-xs" required
                                 v-model="newBean.bag_size.id">
-                                <option disabled value="">Choose a quantity</option>
                                 <option v-for="option in packages_size" :key="option.id" :value="option.id">
                                     {{ option.quantity }} {{ option.units.unit_symbol }}
                                 </option>
@@ -131,14 +133,16 @@
                             <!-- Price per kg -->
                             <div class="form-control">
                                 <label class="label" for="price">
-                                    <span class="label-text">Price</span>
+                                    <span class="label-text">Price LAK</span>
                                 </label>
                                 <input v-model="newBean.bag_size.price" id="price" type="number" step="0.01"
                                     placeholder="Enter price" class="input input-bordered" required />
                             </div>
-
-                            <select id="coffee-select" v-model="newBean.coffee_bean_id" class="select select-bordered">
-                                <option disabled value="">Choose a coffee</option>
+                            <div class="label">
+                                <span class="label-text">Choose a coffee</span>
+                            </div>
+                            <select id="coffee-select" v-model="newBean.coffee_bean_id" class="select select-bordered"
+                                required>
                                 <option v-for="coffee in coffee_bean" :key="coffee.id" :value="coffee.id">
                                     {{ coffee.coffee_region_origin.region_origin }} -
                                     {{ coffee.coffee_process.process }} -
@@ -199,6 +203,9 @@ const newBean = ref({
 
 })
 
+const loading = ref(false)
+
+
 const { data: packages_size } = await $supabaseClient.from('packages_size').select(`
             id,
             quantity,
@@ -208,19 +215,7 @@ const { data: packages_size } = await $supabaseClient.from('packages_size').sele
                 )
           `)
 
-const { data: roast_beans } = await $supabaseClient.from('roast_beans').select(`
-            *,
-            roast_beans_packages(
-            price, packages_size(
-                id, 
-                quantity, 
-                units(
-                    unit_name, 
-                    unit_symbol
-                    )
-                )
-            )
-          `)
+
 const { data: coffee_bean } = await $supabaseClient.from('coffee_bean').select(`
             id,
             coffee_region_origin(region_origin,
@@ -233,7 +228,26 @@ const { data: coffee_bean } = await $supabaseClient.from('coffee_bean').select(`
             coffee_process(process)
           `)
 
-roastBeansData.value = roast_beans
+const fetchBeansList = async () => {
+    const { data: roast_beans } = await $supabaseClient.from('roast_beans').select(`
+            *,
+            roast_beans_packages(
+            price, packages_size(
+                id, 
+                quantity, 
+                units(
+                    unit_name, 
+                    unit_symbol
+                    )
+                )
+            )
+          `)
+
+    roastBeansData.value = roast_beans
+
+}
+
+fetchBeansList()
 
 const isEditing = ref(false);
 
@@ -277,7 +291,74 @@ const closeModal = () => {
     document.getElementById('beanModal').close();
 };
 
-const addRoastBean = () => {
+const addRoastBean = async () => {
     console.log(newBean.value)
+    loading.value = true
+    try {
+
+        // Insert the new roast bean package size into the 'roast_bean_packages' table
+        const { data: roastBeansPackage, error: roastBeanPackageError } = await $supabaseClient.from('roast_beans_packages').insert([
+            {
+                price: newBean.value.bag_size.price,
+                packages_size_id: newBean.value.bag_size.id
+
+            }
+        ]).select()
+
+        if (roastBeanPackageError) {
+            console.log(roastBeanPackageError)
+
+            throw new Error(`Failed to create roast bean package: ${roastBeanPackageError}`);
+        }
+
+
+        const roastBeanPackageID = roastBeansPackage[0].id
+
+
+
+        // Insert the new roast bean into the 'roast_beans' table
+        const { data: roastBeans, error: roastBeansError } = await $supabaseClient.from('roast_beans').insert([
+            {
+                name: newBean.value.name,
+                description: newBean.value.description,
+                coffee_bean_id: newBean.value.coffee_bean_id,
+                available: newBean.value.available,
+                roast_bean_package_id: roastBeanPackageID
+
+            }
+        ]).select()
+
+        if (roastBeansError) {
+            throw new Error(`Failed to create roast bean: ${roastBeansError.message}`);
+        }
+
+
+        // If both operations are successful, show a success message
+        useNuxtApp().$toast.success('roast bean has been created');
+        fetchBeansList()
+        resetBeanForm()
+        document.getElementById('roast-beans-drawer').checked = false;
+        loading.value = false
+    } catch (error) {
+        loading.value = false
+        useNuxtApp().$toast.error(error.message || 'An error occurred while creating roast bean.');
+    }
+
 }
+
+const resetBeanForm = () => {
+    newBean.value = {
+        name: '',
+        description: '',
+        bag_size: {
+            price: 0,
+            id: null
+        },
+        available: false,
+        coffee_bean_id: null
+
+    }
+}
+
+
 </script>

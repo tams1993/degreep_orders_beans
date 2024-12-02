@@ -38,6 +38,12 @@
                   Promotion
                 </NuxtLink>
               </li>
+              <li>
+                <NuxtLink to="/todo" class="flex items-center gap-2">
+                  <Icon name="pajamas:todo-done" class="mx-2" size="2em" />
+                  TODO
+                </NuxtLink>
+              </li>
             </ul>
           </div>
 
