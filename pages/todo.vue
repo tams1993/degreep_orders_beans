@@ -4,6 +4,9 @@
 
         <ul class="divide-y divide-gray-300">
             <li class="flex justify-between items-center p-4">
+                <span class="text-lg text-red-500">CRUD Coffee beans. Important!</span>
+            </li>
+            <li class="flex justify-between items-center p-4">
                 <span class="text-lg">CRUD Roast beans</span>
             </li>
             <li class="flex justify-between items-center p-4">

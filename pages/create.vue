@@ -1,6 +1,7 @@
 <template>
   <div class="container mx-auto p-4">
     <h1 class="text-2xl font-bold mb-4">Create Coffee Order</h1>
+    Change Quantity to amount. add Size selection and update roast beans selection
     <div class="flex h-full">
       <!-- Form -->
       <div class="grid grid-cols-2 gap-4 w-3/5">
