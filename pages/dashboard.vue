@@ -95,7 +95,6 @@
                       <button @click="showOrderDetails(order)" class="btn btn-xs btn-info">
                         View Details
                       </button>
-
                     </div>
                   </td>
                 </tr>
@@ -350,7 +349,7 @@ const { data: salesData } = await supabase
   .select('final_amount')
 
 
-const ordersBeans = supabase.channel('custom-all-channel')
+const ordersBeansChannel = supabase.channel('dashboard-channel')
   .on(
     'postgres_changes',
     { event: '*', schema: 'public', table: 'order_status_history' },
@@ -359,6 +358,11 @@ const ordersBeans = supabase.channel('custom-all-channel')
     }
   )
   .subscribe()
+
+onUnmounted(() => {
+  ordersBeansChannel.unsubscribe()
+  console.log('dashboard unmounted')
+})
 
 const totalSales = computed(() =>
   salesData?.reduce((sum, order) => sum + order?.final_amount, 0).toFixed(2) || 0
